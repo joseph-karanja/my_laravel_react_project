@@ -14,6 +14,18 @@ Route::post('/register', [AuthenticationControllerTest::class, 'register']);
 // Authenticates a user
 Route::post('/login', [AuthenticationControllerTest::class, 'login']);  
 
-//get user(s)
-Route::get('/users', [AuthenticationControllerTest::class, 'getAllUsers']);
-Route::get('/users/{id}', [AuthenticationControllerTest::class, 'getUserById']);
+
+
+// Authenticated Routes go here
+Route::middleware('auth:sanctum')->group(function () {
+    // Retrieve all users
+    Route::get('/users', [AuthenticationControllerTest::class, 'getAllUsers']);
+
+    // Retrieve a specific user by ID
+    Route::get('/users/{id}', [AuthenticationControllerTest::class, 'getUserById']);
+});
+
+
+
+
+

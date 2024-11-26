@@ -6,13 +6,18 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\HasApiTokens;
+use App\Models\UserActivityLog;
+use App\Models\Token;
+use Carbon\Carbon; 
 
 class AuthenticationControllerTest extends Controller
 {
     //register function
     public function register(Request $request)
     {
-        // Validate the basic input first
+        // Validate the basic input 
         $request->validate([
             'first_name' => 'required|string',
             'last_name' => 'required|string',
@@ -25,7 +30,7 @@ class AuthenticationControllerTest extends Controller
         if ($request->password !== $request->password_confirmation) {
             return response()->json([
                 'message' => 'Passwords do not match.'
-            ], 422); // HTTP status code 422 Unprocessable Entity for validation errors
+            ], 422);
         }
 
         // Check if the user already exists by email
@@ -33,7 +38,7 @@ class AuthenticationControllerTest extends Controller
         if ($existingUserByEmail) {
             return response()->json([
                 'message' => 'A user with this email already exists.'
-            ], 409); // HTTP status code 409 Conflict
+            ], 409);
         }
 
         // Check if the phone number is already used
@@ -41,7 +46,7 @@ class AuthenticationControllerTest extends Controller
         if ($existingUserByPhone) {
             return response()->json([
                 'message' => 'A user with this phone number already exists.'
-            ], 409); // HTTP status code 409 Conflict
+            ], 409);
         }
 
         // Create and save the user if all checks pass
@@ -66,30 +71,47 @@ class AuthenticationControllerTest extends Controller
             'email' => 'required|string|email',
             'password' => 'required|string'
         ]);
-
-        // Check if the user exists with the given email
+    
         $user = User::where('email', $request->email)->first();
-
-        // If no user exists with the given email
+    
+        // Check if the user with the given email exists
         if (!$user) {
-            return response()->json([
-                'message' => 'No user found with this email address.'
-            ], 404);  // Using 404 status code for "Not Found"
+            return response()->json(['message' => 'No account found with that email.'], 404);
         }
-
-        // Check if the password is correct
+    
+        // Check if the provided password is correct
         if (!Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'message' => 'Invalid password provided.'
-            ], 401);  // Using 401 status code for "Unauthorized"
+            return response()->json(['message' => 'Incorrect password.'], 401);
         }
-
+    
+        // Generate a token
+        $tokenResult = $user->createToken('Personal Access Token');
+        $plainTextToken = $tokenResult->plainTextToken;
+    
+        // Store token details
+        $token = new Token([
+            'user_uuid' => $user->uuid,
+            'token' => $plainTextToken,
+            'expires_at' => now()->addHours(24)
+        ]);
+        $token->save();
+    
+        // Log activity
+        UserActivityLog::create([
+            'user_uuid' => $user->uuid,
+            'activity_type' => 'login',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->header('User-Agent'),
+            'created_at' => now()
+        ]);
+    
         return response()->json([
-            'message' => 'Login successful',
-            'user' => $user
-        ], 200);
+            'access_token' => $plainTextToken,
+            'token_type' => 'Bearer',
+            'expires_at' => Carbon::parse($token->expires_at)->toDateTimeString()
+        ]);
     }
-
+    
     public function getAllUsers()
     {
         $users = User::all();
@@ -106,8 +128,8 @@ class AuthenticationControllerTest extends Controller
         }
         return response()->json($user);
     }
-
-
+    
+    
 
     
 }
