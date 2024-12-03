@@ -21,7 +21,7 @@ class AuthenticationControllerTest extends Controller
         $request->validate([
             'first_name' => 'required|string',
             'last_name' => 'required|string',
-            'email' => 'required|string|email',
+            'email' => 'required|string',
             'phone_number' => 'required|string',
             'password' => 'required|string|min:4',
         ]);
@@ -68,18 +68,20 @@ class AuthenticationControllerTest extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|string|email',
+            'email' => 'required|string',
             'password' => 'required|string'
         ]);
     
         $user = User::where('email', $request->email)->first();
     
-        // Check if the user with the given email exists
         if (!$user) {
             return response()->json(['message' => 'No account found with that email.'], 404);
         }
     
-        // Check if the provided password is correct
+        if (!$user->is_active) {
+            return response()->json(['message' => 'Your account is inactive. Please contact system admin for assistance.'], 403);
+        }
+    
         if (!Hash::check($request->password, $user->password)) {
             return response()->json(['message' => 'Incorrect password.'], 401);
         }
@@ -88,10 +90,14 @@ class AuthenticationControllerTest extends Controller
         $tokenResult = $user->createToken('Personal Access Token');
         $plainTextToken = $tokenResult->plainTextToken;
     
+        // Extract token string after the pipe
+        $tokenParts = explode('|', $plainTextToken);
+        $actualTokenString = $tokenParts[1];  // Get the part after the ID
+    
         // Store token details
         $token = new Token([
             'user_uuid' => $user->uuid,
-            'token' => $plainTextToken,
+            'token' => $actualTokenString,  // Store the actual token string without the ID
             'expires_at' => now()->addHours(24)
         ]);
         $token->save();
@@ -106,11 +112,13 @@ class AuthenticationControllerTest extends Controller
         ]);
     
         return response()->json([
-            'access_token' => $plainTextToken,
+            'access_token' => $actualTokenString,  // Return the token without the ID
             'token_type' => 'Bearer',
             'expires_at' => Carbon::parse($token->expires_at)->toDateTimeString()
         ]);
     }
+    
+
     
     public function getAllUsers()
     {
