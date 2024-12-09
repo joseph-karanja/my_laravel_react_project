@@ -68,22 +68,29 @@ class AuthenticationControllerTest extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'email' => 'required|string',
-            'password' => 'required|string'
+            'Email' => 'required|string',
+            'Password' => 'required|string'
+        ]);
+
+         // Validate the input using PascalCase fields
+        $validatedData = $request->validate([
+            'Email' => 'required|string',
+            'Password' => 'required|string'
         ]);
     
-        $user = User::where('email', $request->email)->first();
+        // $user = User::where('email', $request->email)->first();
+        $user = User::where('email', $validatedData['Email'])->first();
     
         if (!$user) {
-            return response()->json(['message' => 'No account found with that email.'], 404);
+            return response()->json(['Message' => 'No account found with that email.'], 404);
         }
     
         if (!$user->is_active) {
-            return response()->json(['message' => 'Your account is inactive. Please contact system admin for assistance.'], 403);
+            return response()->json(['Message' => 'Your account is inactive. Please contact system admin for assistance.'], 403);
         }
     
-        if (!Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Incorrect password.'], 401);
+        if (!Hash::check($validatedData['Password'], $user->password)) {
+            return response()->json(['Message' => 'Incorrect password.'], 401);
         }
     
         // Generate a token
@@ -117,8 +124,6 @@ class AuthenticationControllerTest extends Controller
             'expires_at' => Carbon::parse($token->expires_at)->toDateTimeString()
         ]);
     }
-    
-
     
     public function getAllUsers()
     {

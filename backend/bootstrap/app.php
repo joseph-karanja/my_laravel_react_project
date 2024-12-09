@@ -13,9 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-
     ->withMiddleware(function (Middleware $middleware) {
-        // $middleware->add(\App\Http\Middleware\AdminMiddleware::class); // AdminMiddleware
+        // Middleware configurations can be added here
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->respond(function (Response $response) {
@@ -27,4 +26,3 @@ return Application::configure(basePath: dirname(__DIR__))
             return $response;
         });
     })->create();
-

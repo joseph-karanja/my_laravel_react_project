@@ -21,7 +21,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Retrieve a specific user by ID
     Route::get('/users/{id}', [AuthenticationControllerTest::class, 'getUserById']);
     //fetch beneficiaries for a specific payment period
-    Route::get('/beneficiaries', [BeneficiaryManagementController::class, 'getBeneficiariesByDistrict']);
+    // Route::get('/beneficiaries', [BeneficiaryManagementController::class, 'getBeneficiariesByDistrict']);
     // generate unique transaction ids
     Route::get('/beneficiaries/update-transaction-ids', [BeneficiaryManagementController::class, 'generateTransactionIds']);
     // post rqst to get transaction statuses for beneficiaries
@@ -29,7 +29,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // post rqst to get beneficiaries images
     Route::post('/beneficiary-images', [BeneficiaryTransactionStatusController::class, 'storeImage']);
 
-    Route::get('/approved-payment-schools', [BeneficiaryManagementController::class, 'getApprovedPaymentSchools']);
+    Route::get('/approved-payment-schools', [BeneficiaryManagementController::class, 'getApprovedPaymentSchools']);Route::middleware([App\Http\Middleware\LogActivity::class])->group(function () {
+        Route::get('/beneficiaries', [BeneficiaryManagementController::class, 'getBeneficiariesByDistrict']);
+        // Other routes within this middleware group
+    });
+
+
 
 });
 

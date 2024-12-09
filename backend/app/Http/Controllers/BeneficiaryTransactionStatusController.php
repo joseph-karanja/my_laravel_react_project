@@ -15,71 +15,85 @@ class BeneficiaryTransactionStatusController extends Controller
         // Check for district header
         $district = $request->query('district');
         if (empty($district)) {
-            return response()->json(['message' => 'The district parameter is required'], 400);
+            return response()->json(['Message' => 'The district parameter is required'], 400);
         }
-
+    
         $data = $request->json()->all();
-
+    
         // Validate each item in the data array
         foreach ($data as $item) {
             $validator = Validator::make($item, [
-                'transaction_id' => 'required|string',
-                'beneficiary_no' => 'required|string',
-                'payment_status' => 'required|string',
-                'images' => 'required|array',
-                'date_received' => 'required|date',
-                'gps_latitude' => 'required|numeric',
-                'gps_longitude' => 'required|numeric',
-                'gps_altitude' => 'required|numeric',
-                'gps_timestamp' => 'required|date',
+                'TransactionId' => 'required|string',
+                'BeneficiaryNo' => 'required|string',
+                'PaymentStatus' => 'required|string',
+                'ImageIDs' => 'required|array',
+                'DateReceived' => 'required|date',
+                'GpsLatitude' => 'required|numeric',
+                'GpsLongitude' => 'required|numeric',
+                'GpsAltitude' => 'required|numeric',
+                'GpsTimestamp' => 'required|date',
             ]);
-
+    
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 400);
             }
-
+    
+            // Format the GPS timestamp using the global namespace for DateTime
+            $gpsTimestamp = new \DateTime($item['GpsTimestamp']);
+            $formattedGpsTimestamp = $gpsTimestamp->format('Y-m-d H:i:s');
+    
             // Create or update the beneficiary status
-            BeneficiaryTransactionStatus::create($item);
+            BeneficiaryTransactionStatus::create([
+                'transaction_id' => $item['TransactionId'],
+                'beneficiary_no' => $item['BeneficiaryNo'],
+                'payment_status' => $item['PaymentStatus'],
+                'images' => implode(',', $item['ImageIDs']),
+                'date_received' => $item['DateReceived'],
+                'gps_latitude' => $item['GpsLatitude'],
+                'gps_longitude' => $item['GpsLongitude'],
+                'gps_altitude' => $item['GpsAltitude'],
+                'gps_timestamp' => $formattedGpsTimestamp,
+            ]);
         }
-
-        return response()->json(['message' => count($data) . ' records received successfully'], 200);
+    
+        return response()->json(['Message' => count($data) . ' records received successfully'], 200);
     }
-
-
+    
     public function storeImage(Request $request)
     {
-        // Check for district header
+        // Check for district param
         $district = $request->query('district');
         if (empty($district)) {
-            return response()->json(['message' => 'The district parameter is required'], 400);
+            return response()->json(['Message' => 'The district parameter is required'], 400);
         }
-
+    
         $data = $request->json()->all();
-
+    
         // Validate each item in the data array
         foreach ($data as $item) {
             $validator = Validator::make($item, [
-                'beneficiary_number' => 'required|string',
-                'image_id' => 'required|string',
-                'image_url' => 'required|url',
+                'BeneficiaryNumber' => 'required|string',
+                'ImageId' => 'required|string',
+                'ImageUrl' => 'required|url',
             ]);
-
+    
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 400);
             }
-
+    
+            // Transform the keys from PascalCase to snake_case for database insertion
+            $transformedItem = [
+                'beneficiary_number' => $item['BeneficiaryNumber'],
+                'image_id' => $item['ImageId'],
+                'image_url' => $item['ImageUrl'],
+            ];
+    
             // Create a new image record and save it
-            $image = new BeneficiaryImage([
-                'beneficiary_number' => $item['beneficiary_number'],
-                'image_id' => $item['image_id'],
-                'image_url' => $item['image_url'],
-            ]);
-
+            $image = new BeneficiaryImage($transformedItem);
             $image->save();
         }
-
-        return response()->json(['message' => count($data) . ' image records sent successfully'], 201);
+    
+        return response()->json(['Message' => count($data) . ' image records sent successfully'], 201);
     }
-
 }
 

@@ -7,6 +7,7 @@ use App\Models\BeneficiaryPaymentBatch;
 use App\Models\SchoolPaymentList;
 use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
+use App\Models\UserActivityLog;
 
 
 class BeneficiaryManagementController extends Controller
@@ -21,23 +22,39 @@ class BeneficiaryManagementController extends Controller
     {
         $district = $request->query('district'); // or use $request->input('district')
         $perPage = $request->query('perPage', null);
-
+    
         if (empty($district)) {
+            UserActivityLog::create([
+                'user_uuid' => auth()->user()->uuid,  // Assuming the user is authenticated
+                'activity_type' => 'query_beneficiaries',
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->header('User-Agent'),
+                'activity_description' => "Failed to provide district parameter",
+                'created_at' => now()
+            ]);
             return response()->json(['message' => 'Please provide district'], 400);
         }
-
+    
         $query = BeneficiaryPaymentBatch::where('school_district', $district);
-
+    
         if ($perPage) {
             $beneficiaries = $query->paginate($perPage);
         } else {
             $beneficiaries = $query->get();
         }
-
+    
         if ($beneficiaries->isEmpty()) {
+            UserActivityLog::create([
+                'user_uuid' => auth()->user()->uuid,
+                'activity_type' => 'query_beneficiaries',
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->header('User-Agent'),
+                'activity_description' => "No beneficiaries found for district: " . $district,
+                'created_at' => now()
+            ]);
             return response()->json(['message' => 'No beneficiaries found for this district.'], 404);
         }
-
+    
         // Transform the data to match the desired JSON structure
         $transformed = $beneficiaries->map(function ($beneficiary) {
             return [
@@ -56,10 +73,20 @@ class BeneficiaryManagementController extends Controller
                 'TransactionInitiatedAt' => $beneficiary->transaction_time_initiated ? $beneficiary->transaction_time_initiated->toDateTimeString() : null,
             ];
         });
-
+    
+        // Log successful query
+        UserActivityLog::create([
+            'user_uuid' => auth()->user()->uuid,
+            'activity_type' => 'query_beneficiaries',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->header('User-Agent'),
+            'activity_description' => "Successfully retrieved beneficiaries for district: " . $district,
+            'created_at' => now()
+        ]);
+    
         return response()->json($transformed);
     }
-
+    
     public function generateTransactionIds()
     {
         // Fetch records where transaction_id is null
@@ -125,8 +152,6 @@ class BeneficiaryManagementController extends Controller
 
         return response()->json($transformed);
     }
-
-
 }
 
 
